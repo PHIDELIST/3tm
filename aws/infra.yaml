@@ -35,7 +35,7 @@ Resources:
         - Key: Name
           Value: 3TM-VPC
 
-  3TMPublicSubnet:
+  3TMPublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties: 
       VpcId: !Ref 3TMVPC
@@ -44,17 +44,38 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: 3TM-PublicSubnet
+          Value: 3TM-PublicSubnet1
 
-  3TMPrivateSubnet:
+  3TMPublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties: 
       VpcId: !Ref 3TMVPC
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: 3TM-PrivateSubnet
+          Value: 3TM-PublicSubnet2
+
+  3TMPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref 3TMVPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: 3TM-PrivateSubnet1
+
+  3TMPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref 3TMVPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: 3TM-PrivateSubnet2
 
   3TMInternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -80,10 +101,16 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref 3TMInternetGateway
 
-  3TMRouteTableAssociation:
+  3TMRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref 3TMPublicSubnet
+      SubnetId: !Ref 3TMPublicSubnet1
+      RouteTableId: !Ref 3TMRouteTable
+
+  3TMRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 3TMPublicSubnet2
       RouteTableId: !Ref 3TMRouteTable
 
   ###SG##
@@ -123,7 +150,7 @@ Resources:
   3TMLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: 3TM-WebServerLaunchTemplate
+      LaunchTemplateName: TM-WebServerLaunchTemplate
       LaunchTemplateData:
         InstanceType: !Ref InstanceType
         ImageId: ami-0dc2d3e4c0f9ebd18
@@ -149,12 +176,13 @@ Resources:
     Properties:
       LaunchTemplate:
         LaunchTemplateId: !Ref 3TMLaunchTemplate
-        Version: $Latest
+        Version: !GetAtt 3TMLaunchTemplate.LatestVersionNumber 
       MinSize: 1
       MaxSize: 2
       DesiredCapacity: 1
       VPCZoneIdentifier:
-        - !Ref 3TMPublicSubnet
+        - !Ref 3TMPublicSubnet1
+        - !Ref 3TMPublicSubnet2
       TargetGroupARNs:
         - !Ref 3TMTargetGroup
 
@@ -164,7 +192,8 @@ Resources:
     Properties:
       Name: 3TM-LoadBalancer
       Subnets: 
-        - !Ref 3TMPublicSubnet
+        - !Ref 3TMPublicSubnet1
+        - !Ref 3TMPublicSubnet2
       SecurityGroups:
         - !Ref 3TMWebServerSG
       Scheme: internet-facing
@@ -217,12 +246,34 @@ Resources:
         - Key: Name
           Value: 3TM-CloudFrontDistribution
 
-  ### MongoCluster ###
+  ### DocumentDB ###
+  3TMDocumentDBSubnetGroup:
+    Type: AWS::DocDB::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DocumentDB Subnet Group
+      SubnetIds:
+        - !Ref 3TMPrivateSubnet1
+        - !Ref 3TMPrivateSubnet2
+      DBSubnetGroupName: docdb-subnet-group
+      Tags:
+        - Key: Name
+          Value: 3TM-DocumentDB-SubnetGroup
+
+  3TMDocumentDBInstance:
+    Type: AWS::DocDB::DBInstance
+    Properties:
+      DBInstanceClass: db.t3.medium
+      Engine: docdb
+      DBClusterIdentifier: !Ref 3TMDocumentDBCluster
+      Tags:
+        - Key: Name
+          Value: 3TM-DocumentDB-Instance
+
   3TMDocumentDBCluster:
     Type: AWS::DocDB::DBCluster
     Properties:
       EngineVersion: '4.0.0'
-      DBClusterIdentifier: 3tm-documentdb-cluster
+      DBClusterIdentifier: tm-documentdb-cluster
       MasterUsername: !Ref MasterUsername
       MasterUserPassword: !Ref MasterUserPassword
       VpcSecurityGroupIds:
@@ -231,25 +282,6 @@ Resources:
       Tags:
         - Key: Name
           Value: 3TM-DocumentDB-Cluster
-
-  3TMDocumentDBSubnetGroup:
-    Type: AWS::DocDB::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: Subnet group for 3TM DocumentDB
-      SubnetIds:
-        - !Ref 3TMPrivateSubnet
-      Tags:
-        - Key: Name
-          Value: 3TM-DocumentDBSubnetGroup
-
-  3TMDocumentDBInstance:
-    Type: AWS::DocDB::DBInstance
-    Properties:
-      DBInstanceClass: db.t3.medium
-      DBClusterIdentifier: !Ref 3TMDocumentDBCluster
-      Tags:
-        - Key: Name
-          Value: 3TM-DocumentDBInstance
 
 Outputs:
   3TMWebsiteURL:
