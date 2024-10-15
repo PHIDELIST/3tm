@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation template for 3TM web application infrastructure with Amazon DocumentDB, EC2, Load Balancer, Auto Scaling, VPC, and CloudFront.
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t3.micro
+    Description: EC2 instance type
+  KeyPair:
+    Description: Name of an existing EC2 KeyPair for SSH access to the EC2 instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+
+Resources:
+
+  3TMVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: 3TM-VPC
+
+  3TMPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref 3TMVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: 3TM-PublicSubnet
+
+  3TMPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref 3TMVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: 3TM-PrivateSubnet
+
+  3TMInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  3TMAttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref 3TMVPC
+      InternetGatewayId: !Ref 3TMInternetGateway
+
+  3TMRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref 3TMVPC
+      Tags:
+        - Key: Name
+          Value: 3TM-RouteTable
+
+  3TMPublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref 3TMRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref 3TMInternetGateway
+
+  3TMRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 3TMPublicSubnet
+      RouteTableId: !Ref 3TMRouteTable
+
+  ###SG##
+  3TMWebServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 3TM Web Server Security Group - Enable HTTP and SSH access
+      VpcId: !Ref 3TMVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: 3TM-WebServerSG
+
+  3TMDocumentDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 3TM DocumentDB Security Group - Access for EC2 instances
+      VpcId: !Ref 3TMVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 27017
+          ToPort: 27017
+          SourceSecurityGroupId: !Ref 3TMWebServerSG
+      Tags:
+        - Key: Name
+          Value: 3TM-DocumentDB-SG
+
+  ### EC2 ###
+  3TMWebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPair
+      SubnetId: !Ref 3TMPublicSubnet
+      SecurityGroupIds:
+        - !Ref 3TMWebServerSG
+      ImageId: ami-0dc2d3e4c0f9ebd18 
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+      Tags:
+        - Key: Name
+          Value: 3TM-WebServerInstance
+
+  ### Auto Scaling Group ###
+  3TMLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: ami-0dc2d3e4c0f9ebd18
+      SecurityGroups:
+        - !Ref 3TMWebServerSG
+      KeyName: !Ref KeyPair
+
+  3TMAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName: !Ref 3TMLaunchConfig
+      MinSize: 1
+      MaxSize: 2
+      DesiredCapacity: 1
+      VPCZoneIdentifier:
+        - !Ref 3TMPublicSubnet
+
+  ### Load Balancer ###
+  3TMLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: 3TM-LoadBalancer
+      Subnets: 
+        - !Ref 3TMPublicSubnet
+      SecurityGroups:
+        - !Ref 3TMWebServerSG
+      Scheme: internet-facing
+      Tags:
+        - Key: Name
+          Value: 3TM-LoadBalancer
+
+  3TMListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref 3TMLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref 3TMTargetGroup
+
+  3TMTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref 3TMVPC
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: 80
+      Tags:
+        - Key: Name
+          Value: 3TM-TargetGroup
+
+
+  3TMCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt 3TMLoadBalancer.DNSName
+            Id: 3TMLoadBalancerOrigin
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: match-viewer
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: 3TMLoadBalancerOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          ForwardedValues:
+            QueryString: false
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Name
+          Value: 3TM-CloudFrontDistribution
+
+  ### MongoCluster ###
+  3TMDocumentDBCluster:
+    Type: AWS::DocDB::DBCluster
+    Properties:
+      EngineVersion: '4.0.0'
+      DBClusterIdentifier: 3tm-documentdb-cluster
+      MasterUsername: admin
+      MasterUserPassword: Password123! ##we can pass these through a manifest file##
+      VpcSecurityGroupIds:
+        - !Ref 3TMDocumentDBSecurityGroup
+      DBSubnetGroupName: !Ref 3TMDocumentDBSubnetGroup
+      Tags:
+        - Key: Name
+          Value: 3TM-DocumentDB-Cluster
+
+  3TMDocumentDBSubnetGroup:
+    Type: AWS::DocDB::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for 3TM DocumentDB
+      SubnetIds:
+        - !Ref 3TMPrivateSubnet
+      Tags:
+        - Key: Name
+          Value: 3TM-DocumentDBSubnetGroup
+
+  3TMDocumentDBInstance:
+    Type: AWS::DocDB::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref 3TMDocumentDBCluster
+      DBInstanceClass: db.t3.medium
+      AvailabilityZone: !Select [0, !GetAZs '' ]
+      Engine: docdb
+      Tags:
+        - Key: Name
+          Value: 3TM-DocumentDBInstance
+
+Outputs:
+  3TMWebsiteURL:
+    Value: !Sub 'http://${3TMLoadBalancer.DNSName}'
+    Description: The URL of the 3TM web application.
+  3TMDocumentDBClusterEndpoint:
+    Value: !GetAtt 3TMDocumentDBCluster.Endpoint
+    Description: The endpoint for the 3TM DocumentDB cluster.
