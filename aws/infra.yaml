@@ -14,6 +14,14 @@ Parameters:
     Description: Name of an existing EC2 KeyPair for SSH access to the EC2 instance
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+  MasterUsername:
+    Type: String
+    Default: admin
+    Description: DocumentDB master username
+  MasterUserPassword:
+    Type: String
+    NoEcho: true
+    Description: DocumentDB master password
 
 Resources:
 
@@ -32,7 +40,7 @@ Resources:
     Properties: 
       VpcId: !Ref 3TMVPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [0, !GetAZs '' ]
+      AvailabilityZone: !Select [0, !GetAZs '']
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -43,7 +51,7 @@ Resources:
     Properties: 
       VpcId: !Ref 3TMVPC
       CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs '' ]
+      AvailabilityZone: !Select [1, !GetAZs '']
       Tags:
         - Key: Name
           Value: 3TM-PrivateSubnet
@@ -82,7 +90,7 @@ Resources:
   3TMWebServerSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: 3TM Web Server Security Group - Enable HTTP and SSH access
+      GroupDescription: Security group to Allow HTTP and SSH access
       VpcId: !Ref 3TMVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -100,7 +108,7 @@ Resources:
   3TMDocumentDBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: 3TM DocumentDB Security Group - Access for EC2 instances
+      GroupDescription: Security group for 3TM DocumentDB - Access for EC2 instances
       VpcId: !Ref 3TMVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -151,6 +159,8 @@ Resources:
       DesiredCapacity: 1
       VPCZoneIdentifier:
         - !Ref 3TMPublicSubnet
+      TargetGroupARNs:
+        - !Ref 3TMTargetGroup
 
   ### Load Balancer ###
   3TMLoadBalancer:
@@ -189,7 +199,6 @@ Resources:
         - Key: Name
           Value: 3TM-TargetGroup
 
-
   3TMCloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -218,8 +227,8 @@ Resources:
     Properties:
       EngineVersion: '4.0.0'
       DBClusterIdentifier: 3tm-documentdb-cluster
-      MasterUsername: admin
-      MasterUserPassword: Password123! ##we can pass these through a manifest file##
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
       VpcSecurityGroupIds:
         - !Ref 3TMDocumentDBSecurityGroup
       DBSubnetGroupName: !Ref 3TMDocumentDBSubnetGroup
@@ -242,8 +251,6 @@ Resources:
     Properties:
       DBClusterIdentifier: !Ref 3TMDocumentDBCluster
       DBInstanceClass: db.t3.medium
-      AvailabilityZone: !Select [0, !GetAZs '' ]
-      Engine: docdb
       Tags:
         - Key: Name
           Value: 3TM-DocumentDBInstance
