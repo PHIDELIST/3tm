@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS CloudFormation template for 3TM web application infrastructure with Amazon DocumentDB, EC2, Load Balancer, Auto Scaling, VPC, and CloudFront.
+Description: AWS CloudFormation template for TM web application infrastructure with Amazon DocumentDB, EC2, Load Balancer, Auto Scaling, VPC, and CloudFront.
 
 Parameters:
   InstanceType:
@@ -25,251 +25,250 @@ Parameters:
 
 Resources:
 
-  3TMVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: 3TM-VPC
+  TMVPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: 10.0.0.0/16
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        Tags:
+          - Key: Name
+            Value: TM-VPC
 
-  3TMPublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties: 
-      VpcId: !Ref 3TMVPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: 3TM-PublicSubnet1
+  TMPublicSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties: 
+        VpcId: !Ref TMVPC
+        CidrBlock: 10.0.1.0/24
+        AvailabilityZone: !Select [0, !GetAZs '']
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: TM-PublicSubnet1
 
-  3TMPublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties: 
-      VpcId: !Ref 3TMVPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: 3TM-PublicSubnet2
+  TMPublicSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties: 
+        VpcId: !Ref TMVPC
+        CidrBlock: 10.0.2.0/24
+        AvailabilityZone: !Select [1, !GetAZs '']
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: TM-PublicSubnet2
 
-  3TMPrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties: 
-      VpcId: !Ref 3TMVPC
-      CidrBlock: 10.0.3.0/24
-      AvailabilityZone: !Select [0, !GetAZs '']
-      Tags:
-        - Key: Name
-          Value: 3TM-PrivateSubnet1
+  TMPrivateSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties: 
+        VpcId: !Ref TMVPC
+        CidrBlock: 10.0.3.0/24
+        AvailabilityZone: !Select [0, !GetAZs '']
+        Tags:
+          - Key: Name
+            Value: TM-PrivateSubnet1
 
-  3TMPrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties: 
-      VpcId: !Ref 3TMVPC
-      CidrBlock: 10.0.4.0/24
-      AvailabilityZone: !Select [1, !GetAZs '']
-      Tags:
-        - Key: Name
-          Value: 3TM-PrivateSubnet2
+  TMPrivateSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties: 
+        VpcId: !Ref TMVPC
+        CidrBlock: 10.0.4.0/24
+        AvailabilityZone: !Select [1, !GetAZs '']
+        Tags:
+          - Key: Name
+            Value: TM-PrivateSubnet2
 
-  3TMInternetGateway:
-    Type: AWS::EC2::InternetGateway
+  TMInternetGateway:
+      Type: AWS::EC2::InternetGateway
 
-  3TMAttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref 3TMVPC
-      InternetGatewayId: !Ref 3TMInternetGateway
+  TMAttachGateway:
+      Type: AWS::EC2::VPCGatewayAttachment
+      Properties:
+        VpcId: !Ref TMVPC
+        InternetGatewayId: !Ref TMInternetGateway
 
-  3TMRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties: 
-      VpcId: !Ref 3TMVPC
-      Tags:
-        - Key: Name
-          Value: 3TM-RouteTable
+  TMRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties: 
+        VpcId: !Ref TMVPC
+        Tags:
+          - Key: Name
+            Value: TM-RouteTable
 
-  3TMPublicRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref 3TMRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref 3TMInternetGateway
+  TMPublicRoute:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref TMRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref TMInternetGateway
 
-  3TMRouteTableAssociation1:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref 3TMPublicSubnet1
-      RouteTableId: !Ref 3TMRouteTable
+  TMRouteTableAssociation1:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref TMPublicSubnet1
+        RouteTableId: !Ref TMRouteTable
 
-  3TMRouteTableAssociation2:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref 3TMPublicSubnet2
-      RouteTableId: !Ref 3TMRouteTable
+  TMRouteTableAssociation2:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref TMPublicSubnet2
+        RouteTableId: !Ref TMRouteTable
 
-  ###SG##
-  3TMWebServerSG:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group to Allow HTTP and SSH access
-      VpcId: !Ref 3TMVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: 3TM-WebServerSG
+    ###SG##
+  TMWebServerSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group to Allow HTTP and SSH access
+        VpcId: !Ref TMVPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            CidrIp: 0.0.0.0/0
+        Tags:
+          - Key: Name
+            Value: TM-WebServerSG
 
-  3TMDocumentDBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for 3TM DocumentDB - Access for EC2 instances
-      VpcId: !Ref 3TMVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 27017
-          ToPort: 27017
-          SourceSecurityGroupId: !Ref 3TMWebServerSG
-      Tags:
-        - Key: Name
-          Value: 3TM-DocumentDB-SG
+  TMDocumentDBSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for TM DocumentDB - Access for EC2 instances
+        VpcId: !Ref TMVPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 27017
+            ToPort: 27017
+            SourceSecurityGroupId: !Ref TMWebServerSG
+        Tags:
+          - Key: Name
+            Value: TM-DocumentDB-SG
 
-  ### Launch Template ###
-  3TMLaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
-    Properties:
-      LaunchTemplateName: TM-WebServerLaunchTemplate
-      LaunchTemplateData:
-        InstanceType: !Ref InstanceType
-        ImageId: ami-0dc2d3e4c0f9ebd18
-        SecurityGroupIds:
-          - !Ref 3TMWebServerSG
-        KeyName: !Ref KeyPair
-        UserData:
-          Fn::Base64: !Sub |
-            #!/bin/bash
-            yum update -y
-            yum install -y httpd
-            systemctl start httpd
-            systemctl enable httpd
-        TagSpecifications:
-          - ResourceType: instance
-            Tags:
-              - Key: Name
-                Value: 3TM-WebServerInstance
+    ### Launch Template ###
+  TMLaunchTemplate:
+      Type: AWS::EC2::LaunchTemplate
+      Properties:
+        LaunchTemplateName: TM-WebServerLaunchTemplate
+        LaunchTemplateData:
+          InstanceType: !Ref InstanceType
+          ImageId: ami-0dc2d3e4c0f9ebd18
+          SecurityGroupIds:
+            - !Ref TMWebServerSG
+          KeyName: !Ref KeyPair
+          UserData:
+            Fn::Base64: !Sub |
+              #!/bin/bash
+              yum update -y
+              yum install -y httpd
+              systemctl start httpd
+              systemctl enable httpd
+          TagSpecifications:
+            - ResourceType: instance
+              Tags:
+                - Key: Name
+                  Value: TM-WebServerInstance
 
-  ### Auto Scaling Group ###
-  3TMAutoScalingGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    Properties:
-      LaunchTemplate:
-        LaunchTemplateId: !Ref 3TMLaunchTemplate
-        Version: !GetAtt 3TMLaunchTemplate.LatestVersionNumber 
-      MinSize: 1
-      MaxSize: 2
-      DesiredCapacity: 1
-      VPCZoneIdentifier:
-        - !Ref 3TMPublicSubnet1
-        - !Ref 3TMPublicSubnet2
-      TargetGroupARNs:
-        - !Ref 3TMTargetGroup
+    ### Auto Scaling Group ###
+  TMAutoScalingGroup:
+      Type: AWS::AutoScaling::AutoScalingGroup
+      Properties:
+        LaunchTemplate:
+          LaunchTemplateId: !Ref TMLaunchTemplate
+          Version: !GetAtt TMLaunchTemplate.LatestVersionNumber 
+        MinSize: 1
+        MaxSize: 2
+        DesiredCapacity: 1
+        VPCZoneIdentifier:
+          - !Ref TMPublicSubnet1
+          - !Ref TMPublicSubnet2
+        TargetGroupARNs:
+          - !Ref TMTargetGroup
 
-  ### Load Balancer ###
-  3TMLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: 3TM-LoadBalancer
-      Subnets: 
-        - !Ref 3TMPublicSubnet1
-        - !Ref 3TMPublicSubnet2
-      SecurityGroups:
-        - !Ref 3TMWebServerSG
-      Scheme: internet-facing
-      Tags:
-        - Key: Name
-          Value: 3TM-LoadBalancer
+    ### Load Balancer ###
+  TMLoadBalancer:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Name: TM-LoadBalancer
+        Subnets: 
+          - !Ref TMPublicSubnet1
+          - !Ref TMPublicSubnet2
+        SecurityGroups:
+          - !Ref TMWebServerSG
+        Scheme: internet-facing
+        Tags:
+          - Key: Name
+            Value: TM-LoadBalancer
 
-  3TMListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref 3TMLoadBalancer
-      Protocol: HTTP
-      Port: 80
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref 3TMTargetGroup
+  TMListener:
+      Type: AWS::ElasticLoadBalancingV2::Listener
+      Properties:
+        LoadBalancerArn: !Ref TMLoadBalancer
+        Protocol: HTTP
+        Port: 80
+        DefaultActions:
+          - Type: forward
+            TargetGroupArn: !Ref TMTargetGroup
 
-  3TMTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      VpcId: !Ref 3TMVPC
-      Port: 80
-      Protocol: HTTP
-      TargetType: instance
-      HealthCheckProtocol: HTTP
-      HealthCheckPort: 80
-      Tags:
-        - Key: Name
-          Value: 3TM-TargetGroup
+  TMTargetGroup:
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties:
+        VpcId: !Ref TMVPC
+        Port: 80
+        Protocol: HTTP
+        TargetType: instance
+        HealthCheckProtocol: HTTP
+        HealthCheckPort: 80
+        Tags:
+          - Key: Name
+            Value: TM-TargetGroup
 
-  3TMCloudFrontDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Origins:
-          - DomainName: !GetAtt 3TMLoadBalancer.DNSName
-            Id: 3TMLoadBalancerOrigin
-            CustomOriginConfig:
-              HTTPPort: 80
-              OriginProtocolPolicy: match-viewer
-        Enabled: true
-        DefaultCacheBehavior:
-          TargetOriginId: 3TMLoadBalancerOrigin
-          ViewerProtocolPolicy: redirect-to-https
-          ForwardedValues:
-            QueryString: false
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true
-      Tags:
-        - Key: Name
-          Value: 3TM-CloudFrontDistribution
+  TMCloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Origins:
+            - DomainName: !GetAtt TMLoadBalancer.DNSName
+              Id: tmloadbalancerorigin
+              CustomOriginConfig:
+                HTTPPort: 80
+                OriginProtocolPolicy: match-viewer
+          Enabled: true
+          DefaultCacheBehavior:
+            TargetOriginId: tmloadbalancerorigin
+            ViewerProtocolPolicy: redirect-to-https
+            ForwardedValues:
+              QueryString: false
+          ViewerCertificate:
+            CloudFrontDefaultCertificate: true
+        Tags:
+          - Key: Name
+            Value: TM-CloudFrontDistribution
 
-  ### DocumentDB ###
-  3TMDocumentDBSubnetGroup:
-    Type: AWS::DocDB::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: DocumentDB Subnet Group
-      SubnetIds:
-        - !Ref 3TMPrivateSubnet1
-        - !Ref 3TMPrivateSubnet2
-      DBSubnetGroupName: docdb-subnet-group
-      Tags:
-        - Key: Name
-          Value: 3TM-DocumentDB-SubnetGroup
+    ### DocumentDB ###
+  TMDocumentDBSubnetGroup:
+      Type: AWS::DocDB::DBSubnetGroup
+      Properties:
+        DBSubnetGroupDescription: DocumentDB Subnet Group
+        SubnetIds:
+          - !Ref TMPrivateSubnet1
+          - !Ref TMPrivateSubnet2
+        DBSubnetGroupName: documentdb-subnet-group-phidel
+        Tags:
+          - Key: Name
+            Value: TM-DocumentDB-SubnetGroup
 
-  3TMDocumentDBInstance:
-    Type: AWS::DocDB::DBInstance
-    Properties:
-      DBInstanceClass: db.t3.medium
-      Engine: docdb
-      DBClusterIdentifier: !Ref 3TMDocumentDBCluster
-      Tags:
-        - Key: Name
-          Value: 3TM-DocumentDB-Instance
+  TMDocumentDBInstance:
+      Type: AWS::DocDB::DBInstance
+      Properties:
+        DBInstanceClass: db.t3.medium
+        DBClusterIdentifier: !Ref TMDocumentDBCluster
+        Tags:
+          - Key: Name
+            Value: TM-DocumentDB-Instance
 
-  3TMDocumentDBCluster:
+  TMDocumentDBCluster:
     Type: AWS::DocDB::DBCluster
     Properties:
       EngineVersion: '4.0.0'
@@ -277,16 +276,16 @@ Resources:
       MasterUsername: !Ref MasterUsername
       MasterUserPassword: !Ref MasterUserPassword
       VpcSecurityGroupIds:
-        - !Ref 3TMDocumentDBSecurityGroup
-      DBSubnetGroupName: !Ref 3TMDocumentDBSubnetGroup
+        - !Ref TMDocumentDBSecurityGroup
+      DBSubnetGroupName: !Ref TMDocumentDBSubnetGroup
       Tags:
         - Key: Name
-          Value: 3TM-DocumentDB-Cluster
+          Value: TM-DocumentDB-Cluster
 
 Outputs:
-  3TMWebsiteURL:
-    Value: !Sub 'http://${3TMLoadBalancer.DNSName}'
-    Description: The URL of the 3TM web application.
-  3TMDocumentDBClusterEndpoint:
-    Value: !GetAtt 3TMDocumentDBCluster.Endpoint
-    Description: The endpoint for the 3TM DocumentDB cluster.
+  TMWebsiteURL:
+      Value: !Sub 'http://${TMLoadBalancer.DNSName}'
+      Description: The URL of the TM web application.
+  TMDocumentDBClusterEndpoint:
+      Value: !GetAtt TMDocumentDBCluster.Endpoint
+      Description: The endpoint for the TM DocumentDB cluster.
