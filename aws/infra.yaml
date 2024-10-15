@@ -119,41 +119,37 @@ Resources:
         - Key: Name
           Value: 3TM-DocumentDB-SG
 
-  ### EC2 ###
-  3TMWebServerInstance:
-    Type: AWS::EC2::Instance
+  ### Launch Template ###
+  3TMLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      InstanceType: !Ref InstanceType
-      KeyName: !Ref KeyPair
-      SubnetId: !Ref 3TMPublicSubnet
-      SecurityGroupIds:
-        - !Ref 3TMWebServerSG
-      ImageId: ami-0dc2d3e4c0f9ebd18 
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          yum update -y
-          yum install -y httpd
-          systemctl start httpd
-          systemctl enable httpd
-      Tags:
-        - Key: Name
-          Value: 3TM-WebServerInstance
+      LaunchTemplateName: 3TM-WebServerLaunchTemplate
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: ami-0dc2d3e4c0f9ebd18
+        SecurityGroupIds:
+          - !Ref 3TMWebServerSG
+        KeyName: !Ref KeyPair
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install -y httpd
+            systemctl start httpd
+            systemctl enable httpd
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: 3TM-WebServerInstance
 
   ### Auto Scaling Group ###
-  3TMLaunchConfig:
-    Type: AWS::AutoScaling::LaunchConfiguration
-    Properties:
-      InstanceType: !Ref InstanceType
-      ImageId: ami-0dc2d3e4c0f9ebd18
-      SecurityGroups:
-        - !Ref 3TMWebServerSG
-      KeyName: !Ref KeyPair
-
   3TMAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      LaunchConfigurationName: !Ref 3TMLaunchConfig
+      LaunchTemplate:
+        LaunchTemplateId: !Ref 3TMLaunchTemplate
+        Version: $Latest
       MinSize: 1
       MaxSize: 2
       DesiredCapacity: 1
@@ -249,8 +245,8 @@ Resources:
   3TMDocumentDBInstance:
     Type: AWS::DocDB::DBInstance
     Properties:
-      DBClusterIdentifier: !Ref 3TMDocumentDBCluster
       DBInstanceClass: db.t3.medium
+      DBClusterIdentifier: !Ref 3TMDocumentDBCluster
       Tags:
         - Key: Name
           Value: 3TM-DocumentDBInstance
