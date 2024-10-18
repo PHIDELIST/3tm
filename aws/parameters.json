@@ -1,0 +1,19 @@
+[
+    {
+      "ParameterKey": "KeyPair",
+      "ParameterValue": "KeyPair"
+    },
+    {
+      "ParameterKey": "InstanceType",
+      "ParameterValue": "t2.large"
+    },
+    {
+      "ParameterKey": "MasterUsername",
+      "ParameterValue": "delphi"
+    },
+    {
+        "ParameterKey": "MasterUserPassword",
+        "ParameterValue": "poloGulu!12"
+      }
+  ]
+  

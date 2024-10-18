@@ -160,10 +160,61 @@ Resources:
           UserData:
             Fn::Base64: !Sub |
               #!/bin/bash
+              # Update the system
               yum update -y
-              yum install -y httpd
-              systemctl start httpd
-              systemctl enable httpd
+
+              # Install Git
+              yum install -y git
+
+              # Install Node.js and NPM
+              curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+              yum install -y nodejs
+
+              # Install PM2 globally
+              npm install pm2 -g
+
+              # Install and configure Nginx
+              amazon-linux-extras install nginx1.12 -y
+              systemctl start nginx
+              systemctl enable nginx
+
+              # Nginx configuration to serve the React app
+              cat > /etc/nginx/nginx.conf << 'EOF'
+              user nginx;
+              worker_processes auto;
+              error_log /var/log/nginx/error.log;
+              pid /run/nginx.pid;
+
+              events {
+                  worker_connections 1024;
+              }
+
+              http {
+                  include       /etc/nginx/mime.types;
+                  default_type  application/octet-stream;
+                  sendfile        on;
+                  keepalive_timeout 65;
+
+                  server {
+                      listen 80;
+                      server_name localhost;
+
+                      location / {
+                          root   /usr/share/nginx/html;
+                          index  index.html index.htm;
+                          try_files $uri $uri/ /index.html;
+                      }
+                  }
+              }
+              EOF
+
+              # Restart Nginx to apply the configuration
+              systemctl restart nginx
+
+              # Ensure PM2 is set up to restart on server reboot
+              pm2 startup systemd
+
+
           TagSpecifications:
             - ResourceType: instance
               Tags:
