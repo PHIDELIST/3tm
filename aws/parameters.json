@@ -5,15 +5,15 @@
     },
     {
       "ParameterKey": "InstanceType",
-      "ParameterValue": "t2.large"
+      "ParameterValue": "t2.micro"
     },
     {
       "ParameterKey": "MasterUsername",
-      "ParameterValue": "delphi"
+      "ParameterValue": "admin"
     },
     {
         "ParameterKey": "MasterUserPassword",
-        "ParameterValue": "poloGulu!12"
+        "ParameterValue": ""
       }
   ]
   
